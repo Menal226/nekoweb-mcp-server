@@ -1,0 +1,63 @@
+{
+    "name": "nekoweb-mcp-server",
+    "version": "1.0.0",
+    "description": "MCP server that lets AI assistants manage your Nekoweb website: browse, edit, upload and deploy files, and check stats",
+    "mcpName": "io.github.Menal226/nekoweb-mcp-server",
+    "keywords": [
+        "mcp",
+        "mcp-server",
+        "model-context-protocol",
+        "nekoweb",
+        "static-site",
+        "claude"
+    ],
+    "homepage": "https://github.com/Menal226/nekoweb-mcp-server#readme",
+    "bugs": {
+        "url": "https://github.com/Menal226/nekoweb-mcp-server/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Menal226/nekoweb-mcp-server.git"
+    },
+    "author": "Menal",
+    "license": "Apache-2.0",
+    "type": "module",
+    "bin": {
+        "nekoweb-mcp-server": "build/index.js"
+    },
+    "files": [
+        "build"
+    ],
+    "engines": {
+        "node": ">=20.3"
+    },
+    "scripts": {
+        "dev": "tsx src/index.ts",
+        "build": "tsc",
+        "start": "node build/index.js",
+        "inspect": "npx @modelcontextprotocol/inspector node build/index.js",
+        "smoke": "tsx scripts/smoke.ts",
+        "test": "vitest run",
+        "format": "prettier --write \"src/**/*.ts\" \"scripts/**/*.ts\" \"test/**/*.ts\" *.json",
+        "format:check": "prettier --check \"src/**/*.ts\" \"scripts/**/*.ts\" \"test/**/*.ts\" *.json",
+        "bundle": "tsx scripts/bundle.ts",
+        "prepublishOnly": "npm run build && npm test"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/server": "^2.4.0",
+        "zod": "^4.2.1"
+    },
+    "devDependencies": {
+        "@modelcontextprotocol/client": "^2.4.0",
+        "@types/node": "^26.6.6",
+        "prettier": "^3.9.10",
+        "tsx": "^4.23.15",
+        "typescript": "^7.0.2",
+        "vitest": "^5.1.0"
+    },
+    "prettier": {
+        "printWidth": 140,
+        "arrowParens": "avoid",
+        "trailingComma": "none"
+    }
+}

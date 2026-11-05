@@ -1,0 +1,66 @@
+{
+    "manifest_version": "0.2",
+    "name": "nekoweb-mcp-server",
+    "display_name": "Nekoweb",
+    "version": "1.0.0",
+    "description": "Manage your Nekoweb website: browse, edit, upload and deploy files, and check site stats.",
+    "long_description": "Lets Claude browse, read, edit, upload, move and delete the files on your Nekoweb site, deploy a zip of a built site, and check your views, followers and API rate limits.",
+    "author": {
+        "name": "Menal",
+        "url": "https://github.com/Menal226"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Menal226/nekoweb-mcp-server"
+    },
+    "homepage": "https://github.com/Menal226/nekoweb-mcp-server",
+    "support": "https://github.com/Menal226/nekoweb-mcp-server/issues",
+    "license": "Apache-2.0",
+    "keywords": ["nekoweb", "website", "static-site", "hosting"],
+    "server": {
+        "type": "node",
+        "entry_point": "build/index.js",
+        "mcp_config": {
+            "command": "node",
+            "args": ["${__dirname}/build/index.js"],
+            "env": {
+                "NEKOWEB_API_KEY": "${user_config.api_key}",
+                "NEKOWEB_LOCAL_ROOT": "${user_config.local_root}"
+            }
+        }
+    },
+    "user_config": {
+        "api_key": {
+            "type": "string",
+            "title": "API key",
+            "description": "Generate one at https://nekoweb.org/api. It gives full access to your site's files.",
+            "sensitive": true,
+            "required": true
+        },
+        "local_root": {
+            "type": "directory",
+            "title": "Upload folder (optional)",
+            "description": "Only let the upload tools read files inside this folder. Leave empty to allow any file you name.",
+            "required": false
+        }
+    },
+    "tools": [
+        { "name": "nekoweb_get_site_info", "description": "Show a site's title, views, followers and dates" },
+        { "name": "nekoweb_list_sites", "description": "List the sites on your account and their folders" },
+        { "name": "nekoweb_get_limits", "description": "Show remaining API requests" },
+        { "name": "nekoweb_list_folder", "description": "List a folder's contents" },
+        { "name": "nekoweb_read_file", "description": "Read a file's source or view an image" },
+        { "name": "nekoweb_write_file", "description": "Create or replace a text file" },
+        { "name": "nekoweb_create", "description": "Create an empty file or folder" },
+        { "name": "nekoweb_upload_file", "description": "Upload files from your computer" },
+        { "name": "nekoweb_import_zip", "description": "Upload and extract a zip" },
+        { "name": "nekoweb_move", "description": "Rename or move a file or folder" },
+        { "name": "nekoweb_delete", "description": "Permanently delete a file or folder" }
+    ],
+    "compatibility": {
+        "platforms": ["darwin", "win32", "linux"],
+        "runtimes": {
+            "node": ">=20.3"
+        }
+    }
+}

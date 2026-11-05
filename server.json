@@ -1,0 +1,37 @@
+{
+    "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+    "name": "io.github.Menal226/nekoweb-mcp-server",
+    "title": "Nekoweb",
+    "description": "Manage your Nekoweb website: browse, edit, upload and deploy files, and check site stats.",
+    "repository": {
+        "url": "https://github.com/Menal226/nekoweb-mcp-server",
+        "source": "github"
+    },
+    "websiteUrl": "https://github.com/Menal226/nekoweb-mcp-server#readme",
+    "version": "1.0.0",
+    "packages": [
+        {
+            "registryType": "npm",
+            "identifier": "nekoweb-mcp-server",
+            "version": "1.0.0",
+            "transport": {
+                "type": "stdio"
+            },
+            "environmentVariables": [
+                {
+                    "name": "NEKOWEB_API_KEY",
+                    "description": "Your API key from https://nekoweb.org/api",
+                    "isRequired": true,
+                    "isSecret": true,
+                    "format": "string"
+                },
+                {
+                    "name": "NEKOWEB_LOCAL_ROOT",
+                    "description": "Optional folder that limits which local files the upload tools may read",
+                    "isRequired": false,
+                    "format": "filepath"
+                }
+            ]
+        }
+    ]
+}
