@@ -4,30 +4,53 @@
 
 ## Installation
 
-[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=flat-square)](https://insiders.vscode.dev/redirect/mcp/install?name=nekoweb&inputs=%5B%7B%22type%22%3A%22promptString%22%2C%22id%22%3A%22nekoweb_api_key%22%2C%22description%22%3A%22Nekoweb%20API%20key%20%28from%20https%3A%2F%2Fnekoweb.org%2Fapi%29%22%2C%22password%22%3Atrue%7D%5D&config=%7B%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22nekoweb-mcp-server%22%5D%2C%22env%22%3A%7B%22NEKOWEB_API_KEY%22%3A%22%24%7Binput%3Anekoweb_api_key%7D%22%7D%7D) [![Install in VS Code Insiders](https://img.shields.io/badge/VS_Code_Insiders-Install_Server-24bfa5?style=flat-square)](https://insiders.vscode.dev/redirect/mcp/install?name=nekoweb&inputs=%5B%7B%22type%22%3A%22promptString%22%2C%22id%22%3A%22nekoweb_api_key%22%2C%22description%22%3A%22Nekoweb%20API%20key%20%28from%20https%3A%2F%2Fnekoweb.org%2Fapi%29%22%2C%22password%22%3Atrue%7D%5D&config=%7B%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22nekoweb-mcp-server%22%5D%2C%22env%22%3A%7B%22NEKOWEB_API_KEY%22%3A%22%24%7Binput%3Anekoweb_api_key%7D%22%7D%7D&quality=insiders) [![Install in Cursor](https://img.shields.io/badge/Cursor-Install_Server-000000?style=flat-square&logo=cursor&logoColor=white)](https://cursor.com/en/install-mcp?name=nekoweb&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIm5la293ZWItbWNwLXNlcnZlciJdLCJlbnYiOnsiTkVLT1dFQl9BUElfS0VZIjoieW91ci1hcGkta2V5In19) [![Download for Claude Desktop](https://img.shields.io/badge/Claude_Desktop-Download_Extension-D97757?style=flat-square&logo=claude&logoColor=white)](https://github.com/Menal226/nekoweb-mcp-server/releases/latest/download/nekoweb-mcp-server.mcpb)
+[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=flat-square)](<https://insiders.vscode.dev/redirect/mcp/install?name=nekoweb&inputs=%5B%7B%22type%22%3A%22promptString%22%2C%22id%22%3A%22nekoweb_api_key%22%2C%22description%22%3A%22Nekoweb%20API%20key%20(from%20https%3A%2F%2Fnekoweb.org%2Fapi)%22%2C%22password%22%3Atrue%7D%2C%7B%22type%22%3A%22promptString%22%2C%22id%22%3A%22nekoweb_session_token%22%2C%22description%22%3A%22Optional%3A%20Nekoweb%20session%20token%20(the%20token%20cookie%20from%20nekoweb.org).%20Leave%20empty%20to%20skip%22%2C%22password%22%3Atrue%7D%5D&config=%7B%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22nekoweb-mcp-server%22%5D%2C%22env%22%3A%7B%22NEKOWEB_API_KEY%22%3A%22%24%7Binput%3Anekoweb_api_key%7D%22%2C%22NEKOWEB_SESSION_TOKEN%22%3A%22%24%7Binput%3Anekoweb_session_token%7D%22%7D%7D>) [![Install in VS Code Insiders](https://img.shields.io/badge/VS_Code_Insiders-Install_Server-24bfa5?style=flat-square)](<https://insiders.vscode.dev/redirect/mcp/install?name=nekoweb&inputs=%5B%7B%22type%22%3A%22promptString%22%2C%22id%22%3A%22nekoweb_api_key%22%2C%22description%22%3A%22Nekoweb%20API%20key%20(from%20https%3A%2F%2Fnekoweb.org%2Fapi)%22%2C%22password%22%3Atrue%7D%2C%7B%22type%22%3A%22promptString%22%2C%22id%22%3A%22nekoweb_session_token%22%2C%22description%22%3A%22Optional%3A%20Nekoweb%20session%20token%20(the%20token%20cookie%20from%20nekoweb.org).%20Leave%20empty%20to%20skip%22%2C%22password%22%3Atrue%7D%5D&config=%7B%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22nekoweb-mcp-server%22%5D%2C%22env%22%3A%7B%22NEKOWEB_API_KEY%22%3A%22%24%7Binput%3Anekoweb_api_key%7D%22%2C%22NEKOWEB_SESSION_TOKEN%22%3A%22%24%7Binput%3Anekoweb_session_token%7D%22%7D%7D&quality=insiders>) [![Install in Cursor](https://img.shields.io/badge/Cursor-Install_Server-000000?style=flat-square&logo=cursor&logoColor=white)](https://cursor.com/en/install-mcp?name=nekoweb&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIm5la293ZWItbWNwLXNlcnZlciJdLCJlbnYiOnsiTkVLT1dFQl9BUElfS0VZIjoieW91ci1hcGkta2V5IiwiTkVLT1dFQl9TRVNTSU9OX1RPS0VOIjoieW91ci1zZXNzaW9uLXRva2VuIn19) [![Download for Claude Desktop](https://img.shields.io/badge/Claude_Desktop-Download_Extension-D97757?style=flat-square&logo=claude&logoColor=white)](https://github.com/Menal226/nekoweb-mcp-server/releases/latest/download/nekoweb-mcp-server.mcpb)
 
 ### Prerequisites
 
 1. [Node.js](https://nodejs.org) 20.3 or newer. The Claude Desktop extension doesn't need it, because Claude Desktop includes its own.
-2. **A Nekoweb API key.** Log in to Nekoweb, open <https://nekoweb.org/api> and generate a key. The key gives full access to your site's files, so keep it private.
+2. **A Nekoweb API key** (required). Log in to Nekoweb, open <https://nekoweb.org/api> and generate a key. The key gives full access to your site's files, so keep it private.
+3. **A Nekoweb session token** (optional). Without it, everything in Nekoweb's official API works: your files, uploads, site info and limits. With it, you also get site settings, tags, stats history, followers, your feed, following sites and search results that show who you follow. See [Getting your session token](#getting-your-session-token).
 
-<details><summary><b>Keeping your API key safe</b></summary>
+#### Getting your session token
 
-- **Don't commit it.** If your MCP config lives in a project (e.g. `.vscode/mcp.json`), use your client's secret prompt, like the VS Code button above does, instead of pasting the key into the file.
-- **Regenerate it if it leaks.** Generating a new key at <https://nekoweb.org/api> makes the old one stop working.
+The session token is the login cookie your browser uses on nekoweb.org. The server uses it to read and change things that aren't in the official API.
+
+1. Log in at <https://nekoweb.org> in your browser.
+2. Open the developer tools (F12) and go to **Application → Cookies** (Chrome, Edge) or **Storage → Cookies** (Firefox), then pick `https://nekoweb.org`.
+3. Copy the value of the cookie named `token`.
+4. Put it in your MCP config as `NEKOWEB_SESSION_TOKEN`, as in the examples below, and restart your client.
+
+> [!WARNING]
+> The session token is more powerful than the API key: it can do anything you can do while logged in, including changing your account settings. Keep it private, and never paste it into a chat with your assistant. It stops working when the session ends, for example when you log out, and then you need to copy a new one.
+
+<details><summary><b>Keeping your API key and session token safe</b></summary>
+
+- **Don't commit them.** If your MCP config lives in a project (e.g. `.vscode/mcp.json`), use your client's secret prompt, like the VS Code button above does, instead of pasting them into the file.
+- **Regenerate the key if it leaks.** Generating a new key at <https://nekoweb.org/api> makes the old one stop working. For a leaked session token, log out of nekoweb.org to end that session.
 - **Limit local uploads.** Set `NEKOWEB_LOCAL_ROOT` to your site project's folder so the assistant can only upload files from there. See [Configuration](#configuration).
 
 </details>
 
+The examples below include both the API key and the session token. If you don't want the session token, leave it out: each client has an **API key only** version.
+
 ### Claude Code
+
+```bash
+claude mcp add nekoweb -e NEKOWEB_API_KEY=your-api-key -e NEKOWEB_SESSION_TOKEN=your-session-token -- npx -y nekoweb-mcp-server
+```
+
+<details><summary>API key only</summary>
 
 ```bash
 claude mcp add nekoweb -e NEKOWEB_API_KEY=your-api-key -- npx -y nekoweb-mcp-server
 ```
 
+</details>
+
 ### Claude Desktop
 
-Download [nekoweb-mcp-server.mcpb](https://github.com/Menal226/nekoweb-mcp-server/releases/latest/download/nekoweb-mcp-server.mcpb) and open it. Claude Desktop shows an install screen that asks for your API key.
+Download [nekoweb-mcp-server.mcpb](https://github.com/Menal226/nekoweb-mcp-server/releases/latest/download/nekoweb-mcp-server.mcpb) and open it. Claude Desktop shows an install screen that asks for your API key and, optionally, your session token. Leave the session token empty to skip it.
 
 <details><summary>Or add it to the config file</summary>
 
@@ -39,36 +62,52 @@ Open **Settings → Developer → Edit Config**, add the server to `claude_deskt
     "nekoweb": {
       "command": "npx",
       "args": ["-y", "nekoweb-mcp-server"],
-      "env": { "NEKOWEB_API_KEY": "your-api-key" }
+      "env": {
+        "NEKOWEB_API_KEY": "your-api-key",
+        "NEKOWEB_SESSION_TOKEN": "your-session-token"
+      }
     }
   }
 }
 ```
+
+For the API key only, remove the `NEKOWEB_SESSION_TOKEN` line (and the comma before it).
 
 </details>
 
 ### VS Code
 
-Use the install button above. VS Code asks for your API key when the server first starts. Or add this to `.vscode/mcp.json` or your user MCP configuration:
+Use the install button above. VS Code asks for your API key and session token when the server first starts; leave the session token empty to skip it. Or add this to `.vscode/mcp.json` or your user MCP configuration:
 
 ```json
 {
   "inputs": [
-    { "type": "promptString", "id": "nekoweb_api_key", "description": "Nekoweb API key", "password": true }
+    { "type": "promptString", "id": "nekoweb_api_key", "description": "Nekoweb API key", "password": true },
+    {
+      "type": "promptString",
+      "id": "nekoweb_session_token",
+      "description": "Optional: Nekoweb session token. Leave empty to skip",
+      "password": true
+    }
   ],
   "servers": {
     "nekoweb": {
       "command": "npx",
       "args": ["-y", "nekoweb-mcp-server"],
-      "env": { "NEKOWEB_API_KEY": "${input:nekoweb_api_key}" }
+      "env": {
+        "NEKOWEB_API_KEY": "${input:nekoweb_api_key}",
+        "NEKOWEB_SESSION_TOKEN": "${input:nekoweb_session_token}"
+      }
     }
   }
 }
 ```
 
+For the API key only, remove the `nekoweb_session_token` input and the `NEKOWEB_SESSION_TOKEN` line.
+
 ### Cursor
 
-Use the install button above, then replace `your-api-key` with your key. Or add this to `~/.cursor/mcp.json`:
+Use the install button above, then replace `your-api-key` and `your-session-token` with yours, or delete the `NEKOWEB_SESSION_TOKEN` line to use the API key only. Or add this to `~/.cursor/mcp.json`:
 
 ```json
 {
@@ -76,15 +115,20 @@ Use the install button above, then replace `your-api-key` with your key. Or add 
     "nekoweb": {
       "command": "npx",
       "args": ["-y", "nekoweb-mcp-server"],
-      "env": { "NEKOWEB_API_KEY": "your-api-key" }
+      "env": {
+        "NEKOWEB_API_KEY": "your-api-key",
+        "NEKOWEB_SESSION_TOKEN": "your-session-token"
+      }
     }
   }
 }
 ```
 
+For the API key only, remove the `NEKOWEB_SESSION_TOKEN` line (and the comma before it).
+
 ### Other MCP hosts
 
-Any host that supports local (stdio) MCP servers works. Configure it to run `npx -y nekoweb-mcp-server` with the `NEKOWEB_API_KEY` environment variable set. Most hosts use the same JSON format as the Claude Desktop and Cursor examples above.
+Any host that supports local (stdio) MCP servers works. Configure it to run `npx -y nekoweb-mcp-server` with the `NEKOWEB_API_KEY` environment variable set, and optionally `NEKOWEB_SESSION_TOKEN`. Most hosts use the same JSON format as the Claude Desktop and Cursor examples above.
 
 ### Build from source
 
@@ -92,34 +136,19 @@ Clone this repository and run `npm install` and `npm run build`. Then use `node 
 
 ### Check that it works
 
-Ask your assistant: *"What's on my Nekoweb site?"* It should list your site's files.
+Ask your assistant: _"What's on my Nekoweb site?"_ It should list your site's files.
 
 ---
 
 ## Configuration
 
-| Environment variable | Required | Description |
-|---|---|---|
-| `NEKOWEB_API_KEY` | Yes | Your API key from <https://nekoweb.org/api>. Without it, only public site lookups work. |
-| `NEKOWEB_LOCAL_ROOT` | No | A folder on your computer. When set, the upload tools can only read files inside it. When unset, any file you name can be uploaded. |
-| `NEKOWEB_SESSION_TOKEN` | No | Your Nekoweb login session, for features the official API doesn't have, like site tags, stats history, followers and your feed. See below. |
+| Environment variable    | Required | Description                                                                                                                                                                                              |
+| ----------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEKOWEB_API_KEY`       | Yes      | Your API key from <https://nekoweb.org/api>. Without it, only public site lookups work.                                                                                                                  |
+| `NEKOWEB_LOCAL_ROOT`    | No       | A folder on your computer. When set, the upload tools can only read files inside it. When unset, any file you name can be uploaded.                                                                      |
+| `NEKOWEB_SESSION_TOKEN` | No       | Your Nekoweb login session, for features the official API doesn't have, like site settings, tags, stats history, followers and your feed. See [Getting your session token](#getting-your-session-token). |
 
-<details><summary><b>Getting your session token</b></summary>
-
-Some features, like site settings, tags, stats history, followers, your feed and following sites, aren't in Nekoweb's official API. The server reads them from nekoweb.org's own pages, using the same login cookie your browser uses.
-
-1. Log in at <https://nekoweb.org> in your browser.
-2. Open the developer tools (F12) and go to **Application → Cookies** (Chrome, Edge) or **Storage → Cookies** (Firefox), then pick `https://nekoweb.org`.
-3. Copy the value of the cookie named `token`.
-4. Add it to your MCP config as `NEKOWEB_SESSION_TOKEN`, next to your API key, and restart your client. In Claude Code:
-
-   ```bash
-   claude mcp add nekoweb -e NEKOWEB_API_KEY=your-api-key -e NEKOWEB_SESSION_TOKEN=your-session-token -- npx -y nekoweb-mcp-server
-   ```
-
-The session token is more powerful than the API key: it can do anything you can do while logged in, including changing your account settings. Keep it private, and never paste it into a chat. It stops working when the session ends, for example when you log out, and then you need to copy a new one.
-
-</details>
+See [Getting your session token](#getting-your-session-token) for how to get the session token.
 
 ## Tools
 
@@ -276,15 +305,15 @@ Paths start at your account's file root, not at your site. Each site's files are
 
 ## Troubleshooting
 
-| Message | Fix |
-|---|---|
-| "No Nekoweb API key configured" | `NEKOWEB_API_KEY` isn't set. Add it to your MCP config and restart your client. |
-| "redirected the request to its login page … missing or invalid" | The API key is wrong or was regenerated. Create a new one at <https://nekoweb.org/api>. |
-| "No Nekoweb session token configured" | The tool needs `NEKOWEB_SESSION_TOKEN`. See [Getting your session token](#configuration). |
-| "Nekoweb rejected the session" | Your login session ended. Log in to nekoweb.org again and copy the new `token` cookie. |
-| "Rate limit exceeded" | Wait until the reset time in the message, then try again. |
-| "File does not exist" | The path is probably missing your site's folder, e.g. `/yourname.nekoweb.org/`. Ask the assistant to list your sites first. |
-| The tools don't appear | Restart your client and check that Node.js 20.3 or newer is installed (`node --version`). |
+| Message                                                         | Fix                                                                                                                         |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| "No Nekoweb API key configured"                                 | `NEKOWEB_API_KEY` isn't set. Add it to your MCP config and restart your client.                                             |
+| "redirected the request to its login page … missing or invalid" | The API key is wrong or was regenerated. Create a new one at <https://nekoweb.org/api>.                                     |
+| "No Nekoweb session token configured"                           | The tool needs `NEKOWEB_SESSION_TOKEN`. See [Getting your session token](#getting-your-session-token).                      |
+| "Nekoweb rejected the session"                                  | Your login session ended. Log in to nekoweb.org again and copy the new `token` cookie.                                      |
+| "Rate limit exceeded"                                           | Wait until the reset time in the message, then try again.                                                                   |
+| "File does not exist"                                           | The path is probably missing your site's folder, e.g. `/yourname.nekoweb.org/`. Ask the assistant to list your sites first. |
+| The tools don't appear                                          | Restart your client and check that Node.js 20.3 or newer is installed (`node --version`).                                   |
 
 Found a bug or want a feature? [Open an issue](https://github.com/Menal226/nekoweb-mcp-server/issues).
 
