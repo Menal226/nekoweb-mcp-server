@@ -2,7 +2,7 @@
     "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
     "name": "io.github.Menal226/nekoweb-mcp-server",
     "title": "Nekoweb",
-    "description": "Manage your Nekoweb website: browse, edit, upload and deploy files, and check site stats.",
+    "description": "Manage your Nekoweb site: edit, upload and deploy files, check stats, and follow other sites.",
     "repository": {
         "url": "https://github.com/Menal226/nekoweb-mcp-server",
         "source": "github"
@@ -30,6 +30,13 @@
                     "description": "Optional folder that limits which local files the upload tools may read",
                     "isRequired": false,
                     "format": "filepath"
+                },
+                {
+                    "name": "NEKOWEB_SESSION_TOKEN",
+                    "description": "Optional nekoweb.org login cookie ('token') for features the API lacks, like site tags, stats history, followers and your feed",
+                    "isRequired": false,
+                    "isSecret": true,
+                    "format": "string"
                 }
             ]
         }

@@ -102,6 +102,24 @@ Ask your assistant: *"What's on my Nekoweb site?"* It should list your site's fi
 |---|---|---|
 | `NEKOWEB_API_KEY` | Yes | Your API key from <https://nekoweb.org/api>. Without it, only public site lookups work. |
 | `NEKOWEB_LOCAL_ROOT` | No | A folder on your computer. When set, the upload tools can only read files inside it. When unset, any file you name can be uploaded. |
+| `NEKOWEB_SESSION_TOKEN` | No | Your Nekoweb login session, for features the official API doesn't have, like site tags, stats history, followers and your feed. See below. |
+
+<details><summary><b>Getting your session token</b></summary>
+
+Some features, like site tags, stats history, followers, your feed and following sites, aren't in Nekoweb's official API. The server reads them from nekoweb.org's own pages, using the same login cookie your browser uses.
+
+1. Log in at <https://nekoweb.org> in your browser.
+2. Open the developer tools (F12) and go to **Application → Cookies** (Chrome, Edge) or **Storage → Cookies** (Firefox), then pick `https://nekoweb.org`.
+3. Copy the value of the cookie named `token`.
+4. Add it to your MCP config as `NEKOWEB_SESSION_TOKEN`, next to your API key, and restart your client. In Claude Code:
+
+   ```bash
+   claude mcp add nekoweb -e NEKOWEB_API_KEY=your-api-key -e NEKOWEB_SESSION_TOKEN=your-session-token -- npx -y nekoweb-mcp-server
+   ```
+
+The session token is more powerful than the API key: it can do anything you can do while logged in, including changing your account settings. Keep it private, and never paste it into a chat. It stops working when the session ends, for example when you log out, and then you need to copy a new one.
+
+</details>
 
 ## Tools
 
@@ -174,6 +192,61 @@ Tools marked read-only never change your site. The others change files, so most 
 
 </details>
 
+<details>
+
+<summary><b>Settings</b> (needs <code>NEKOWEB_SESSION_TOKEN</code>)</summary>
+
+- **nekoweb_get_tags** - List the tags on one of your sites, and how many of the allowed tags it uses (read-only)
+  - `site`: Domain of one of your sites, e.g. `mysite.nekoweb.org`. Omit for the site the API key belongs to (string, optional)
+  - `response_format`: `markdown` (default) or `json` (string, optional)
+
+- **nekoweb_add_tag** - Add a tag to one of your sites. Sites can have up to 10 tags
+  - `site`: Domain of one of your sites. Omit for the site the API key belongs to (string, optional)
+  - `tag`: The tag, 2 to 32 characters, e.g. `pixel-art` (string, required)
+
+- **nekoweb_remove_tag** - Remove a tag from one of your sites
+  - `site`: Domain of one of your sites. Omit for the site the API key belongs to (string, optional)
+  - `tag`: The tag to remove (string, required)
+
+- **nekoweb_get_stats_history** - Get the day-by-day history of a site's views, followers and updates, like the charts on its statistics page (read-only)
+  - `site`: Domain of one of your sites. Omit for the site the API key belongs to (string, optional)
+  - `period`: `month` (default), `year` or `all`. Nekoweb only shows `year` and `all` on paid tiers (string, optional)
+  - `response_format`: `markdown` (default) or `json` (string, optional)
+
+- **nekoweb_list_followers** - List the sites that follow one of your sites, with each one's title, link, screenshot and whether you follow it back (read-only)
+  - `site`: Domain of one of your sites. Omit for the site the API key belongs to (string, optional)
+  - `sort`: `follow_date` (default), `recently_updated` or `most_followed` (string, optional)
+  - `page`: Fetch only this page. Omit to fetch every page, up to 20 (number, optional)
+  - `response_format`: `markdown` (default) or `json` (string, optional)
+
+</details>
+
+<details>
+
+<summary><b>Social</b> (news and the global feed need no key or token, the rest need <code>NEKOWEB_SESSION_TOKEN</code>)</summary>
+
+- **nekoweb_get_news** - Get the latest announcements from nekoweb.org's news page, newest first (read-only)
+  - `limit`: How many posts to return, 1 to 100, default 5 (number, optional)
+  - `response_format`: `markdown` (default) or `json` (string, optional)
+
+- **nekoweb_get_global_feed** - Get the newest posts from all Nekoweb sites, from the global RSS feed (read-only)
+  - `limit`: How many posts to return, 1 to 50, default 20 (number, optional)
+  - `response_format`: `markdown` (default) or `json` (string, optional)
+
+- **nekoweb_get_feed** - Get the latest posts from the sites you follow, as shown on your feed (read-only, needs the session token)
+  - `page`: Page of the feed, newest first, default 1 (number, optional)
+  - `response_format`: `markdown` (default) or `json` (string, optional)
+
+- **nekoweb_list_following** - List the sites you follow, grouped by the day each was last updated (read-only, needs the session token)
+  - `page`: Fetch only this page. Omit to fetch every page, up to 20 (number, optional)
+  - `response_format`: `markdown` (default) or `json` (string, optional)
+
+- **nekoweb_follow_site** - Follow or unfollow a site. Checks first, so it only changes something when needed (needs the session token)
+  - `site`: Domain of the site, e.g. `fairfruit.nekoweb.org` (string, required)
+  - `follow`: `true` to follow (default), `false` to unfollow (boolean, optional)
+
+</details>
+
 ### Paths
 
 Paths start at your account's file root, not at your site. Each site's files are in a folder named after its domain, so your homepage is `/yourname.nekoweb.org/index.html`, not `/index.html`. You don't need to remember this: the assistant finds the folder with `nekoweb_list_sites`.
@@ -191,6 +264,8 @@ Paths start at your account's file root, not at your site. Each site's files are
 |---|---|
 | "No Nekoweb API key configured" | `NEKOWEB_API_KEY` isn't set. Add it to your MCP config and restart your client. |
 | "redirected the request to its login page … missing or invalid" | The API key is wrong or was regenerated. Create a new one at <https://nekoweb.org/api>. |
+| "No Nekoweb session token configured" | The tool needs `NEKOWEB_SESSION_TOKEN`. See [Getting your session token](#configuration). |
+| "Nekoweb rejected the session" | Your login session ended. Log in to nekoweb.org again and copy the new `token` cookie. |
 | "Rate limit exceeded" | Wait until the reset time in the message, then try again. |
 | "File does not exist" | The path is probably missing your site's folder, e.g. `/yourname.nekoweb.org/`. Ask the assistant to list your sites first. |
 | The tools don't appear | Restart your client and check that Node.js 20.3 or newer is installed (`node --version`). |

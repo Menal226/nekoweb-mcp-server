@@ -15,6 +15,17 @@ export function normalizeSitePath(input: string): string {
     return "/" + segments.join("/");
 }
 
+// "https://mysite.nekoweb.org/blog" -> "mysite.nekoweb.org"
+export function normalizeDomain(input: string): string {
+    const domain = input
+        .trim()
+        .replace(/^https?:\/\//i, "")
+        .replace(/[/?#].*$/, "")
+        .toLowerCase();
+    if (!/^[a-z0-9.-]+$/.test(domain)) throw new NekowebError(`Invalid site "${input}": use a domain like "mysite.nekoweb.org".`);
+    return domain;
+}
+
 export function normalizeEntryPath(input: string): string {
     const path = normalizeSitePath(input);
     if (path === "/") throw new NekowebError(`Invalid path "${input}": this needs a file or folder path, not the root folder.`);

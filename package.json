@@ -45,6 +45,7 @@
     },
     "dependencies": {
         "@modelcontextprotocol/server": "^2.4.0",
+        "cheerio": "^1.2.0",
         "zod": "^4.2.1"
     },
     "devDependencies": {

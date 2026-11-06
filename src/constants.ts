@@ -3,9 +3,11 @@ import { readFileSync } from "node:fs";
 export const SERVER_NAME = "nekoweb-mcp-server";
 export const SERVER_VERSION: string = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
 
-// Overridable so tests can point the server at a mock API.
+// Overridable so tests can point the server at a mock Nekoweb.
 export const API_BASE_URL = (process.env.NEKOWEB_API_BASE_URL ?? "https://nekoweb.org/api").replace(/\/+$/, "");
+export const SITE_BASE_URL = (process.env.NEKOWEB_SITE_BASE_URL ?? "https://nekoweb.org").replace(/\/+$/, "");
 export const API_KEY = process.env.NEKOWEB_API_KEY?.trim() || undefined;
+export const SESSION_TOKEN = process.env.NEKOWEB_SESSION_TOKEN?.trim() || undefined;
 export const LOCAL_ROOT = process.env.NEKOWEB_LOCAL_ROOT || undefined;
 
 export const CHARACTER_LIMIT = 25_000;

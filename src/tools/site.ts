@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 import { describeReset, nekoweb, type SiteInfo } from "../api.js";
+import { normalizeDomain } from "../paths.js";
 import { formatDate, json, READ_ONLY, responseFormatField, text } from "./common.js";
 
 function formatSite(site: SiteInfo): string {
@@ -38,10 +39,7 @@ Use nekoweb_list_sites to see every site on the account.`,
             annotations: READ_ONLY
         },
         async ({ site, response_format }, ctx) => {
-            const domain = site
-                ?.trim()
-                .replace(/^https?:\/\//i, "")
-                .replace(/\/.*$/, "");
+            const domain = site && normalizeDomain(site);
             const info = domain ? await nekoweb.getPublicSiteInfo(domain, ctx.mcpReq.signal) : await nekoweb.getSiteInfo(ctx.mcpReq.signal);
             return response_format === "json" ? json(info) : text(formatSite(info));
         }

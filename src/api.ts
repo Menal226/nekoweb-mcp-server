@@ -7,10 +7,14 @@ import {
     REQUEST_TIMEOUT_MS,
     SERVER_NAME,
     SERVER_VERSION,
+    SESSION_TOKEN,
+    SITE_BASE_URL,
     UPLOAD_TIMEOUT_MS
 } from "./constants.js";
 
 const KEY_HINT = "Generate a key at https://nekoweb.org/api while logged in and set it as NEKOWEB_API_KEY.";
+const SESSION_HINT =
+    'Ask the user to copy the "token" cookie for nekoweb.org from a browser where they are logged in, set it as NEKOWEB_SESSION_TOKEN in this server\'s MCP config, and restart their MCP client. They should not paste the token into the chat.';
 
 export class NekowebError extends Error {}
 
@@ -34,6 +38,24 @@ export function httpErrorMessage(status: number, body: string, reset?: string | 
                 ? `${prefix} Nekoweb is having trouble; try again in a moment.`
                 : `${prefix} Check the path with nekoweb_list_folder; a site's files are usually inside a folder named after it, e.g. "/mysite.nekoweb.org/index.html".`;
     }
+}
+
+// nekoweb.org's own pages answer with HTML pages or plain text instead of JSON.
+export function sitePageError(status: number, body: string, domain: string, reset?: string | null, ownSite = true): string {
+    if ((status >= 300 && status < 400) || /Security error|Not logged in/i.test(body)) {
+        return `Nekoweb rejected the session (HTTP ${status}), which means the session token is invalid or expired, for example because the user logged out. ${SESSION_HINT}`;
+    }
+    if (status === 429) {
+        return `Rate limit exceeded (HTTP 429).${reset ? ` The limit resets at ${describeReset(reset)}.` : ""} Wait before retrying.`;
+    }
+    if (/Site not found/i.test(body)) {
+        return ownSite
+            ? `Site not found: ${domain} isn't a site on the logged-in account. nekoweb_list_sites lists your sites.`
+            : `Site not found: there is no Nekoweb site at ${domain}.`;
+    }
+    const message = body.includes("<") ? body.match(/<p>\s*([^<]+?)\s*<\/p>/)?.[1] : errorDetail(body).slice(0, 300);
+    if (message && status < 500) return `Nekoweb refused the request (HTTP ${status}): ${message}`;
+    return `Nekoweb returned HTTP ${status} for ${domain}. Try again in a moment.`;
 }
 
 function errorDetail(body: string): string {
@@ -81,25 +103,18 @@ interface RequestOptions {
 }
 
 class NekowebClient {
-    constructor(private readonly apiKey: string | undefined) {}
+    constructor(
+        private readonly apiKey: string | undefined,
+        private readonly sessionToken: string | undefined
+    ) {}
 
-    private async request(path: string, opts: RequestOptions = {}): Promise<Response> {
-        const { method = "GET", query, body, signal, timeoutMs = REQUEST_TIMEOUT_MS, auth = true } = opts;
-        if (auth && !this.apiKey) throw new NekowebError(`No Nekoweb API key configured. ${KEY_HINT}`);
-
-        const url = new URL(API_BASE_URL + path);
-        for (const [key, value] of Object.entries(query ?? {})) url.searchParams.set(key, value);
-        const headers: Record<string, string> = { "User-Agent": `${SERVER_NAME}/${SERVER_VERSION}` };
-        if (this.apiKey) headers.Authorization = this.apiKey;
+    private async send(url: URL, init: RequestInit, timeoutMs: number, signal?: AbortSignal): Promise<Response> {
         const timeout = AbortSignal.timeout(timeoutMs);
-
-        let response: Response;
         try {
-            // Don't follow redirects: a bad key would otherwise come back as the login page with status 200.
-            response = await fetch(url, {
-                method,
-                headers,
-                body,
+            // Don't follow redirects: bad credentials would otherwise come back as the login page with status 200.
+            return await fetch(url, {
+                ...init,
+                headers: { "User-Agent": `${SERVER_NAME}/${SERVER_VERSION}`, ...(init.headers as Record<string, string>) },
                 redirect: "manual",
                 signal: signal ? AbortSignal.any([signal, timeout]) : timeout
             });
@@ -108,6 +123,16 @@ class NekowebClient {
             if (signal?.aborted) throw error;
             throw new NekowebError(`Could not reach Nekoweb: ${error instanceof Error ? error.message : String(error)}`);
         }
+    }
+
+    private async request(path: string, opts: RequestOptions = {}): Promise<Response> {
+        const { method = "GET", query, body, signal, timeoutMs = REQUEST_TIMEOUT_MS, auth = true } = opts;
+        if (auth && !this.apiKey) throw new NekowebError(`No Nekoweb API key configured. ${KEY_HINT}`);
+
+        const url = new URL(API_BASE_URL + path);
+        for (const [key, value] of Object.entries(query ?? {})) url.searchParams.set(key, value);
+        const headers: Record<string, string> = this.apiKey ? { Authorization: this.apiKey } : {};
+        const response = await this.send(url, { method, headers, body }, timeoutMs, signal);
         if (!response.ok) {
             const text = await response.text().catch(() => "");
             throw new NekowebError(httpErrorMessage(response.status, text, response.headers.get("ratelimit-reset")));
@@ -126,6 +151,79 @@ class NekowebClient {
 
     private async post(path: string, body: URLSearchParams | FormData, signal?: AbortSignal): Promise<void> {
         await this.request(path, { method: "POST", body, signal, timeoutMs: UPLOAD_TIMEOUT_MS });
+    }
+
+    // nekoweb.org's own pages and forms, as opposed to the API, need the login session token.
+    // 'ownSite' is the user's site whose settings are read or changed; 'about' names the page in errors otherwise.
+    private async sitePage(
+        url: URL,
+        { ownSite, about, init = {}, signal }: { ownSite?: string; about?: string; init?: RequestInit; signal?: AbortSignal }
+    ): Promise<Response> {
+        if (!this.sessionToken) throw new NekowebError(`No Nekoweb session token configured. ${SESSION_HINT}`);
+        const headers = {
+            Cookie: `token=${this.sessionToken}`,
+            Origin: SITE_BASE_URL,
+            Referer: ownSite ? `${SITE_BASE_URL}/settings/${encodeURIComponent(ownSite)}` : SITE_BASE_URL + url.pathname
+        };
+        const response = await this.send(url, { ...init, headers }, REQUEST_TIMEOUT_MS, signal);
+        // A successful form submission redirects back to the settings page.
+        const backToSettings = init.method === "POST" && response.headers.get("location")?.includes("/settings/");
+        if (response.ok || backToSettings) return response;
+        const body = await response.text().catch(() => "");
+        const name = ownSite ?? about ?? decodeURIComponent(url.pathname);
+        throw new NekowebError(sitePageError(response.status, body, name, response.headers.get("ratelimit-reset"), ownSite !== undefined));
+    }
+
+    async getSettingsPage(domain: string, page?: string, signal?: AbortSignal): Promise<string> {
+        const url = new URL(`${SITE_BASE_URL}/settings/${encodeURIComponent(domain)}`);
+        if (page) url.searchParams.set("page", page);
+        return (await this.sitePage(url, { ownSite: domain, signal })).text();
+    }
+
+    async getStatsPage(domain: string, time: "month" | "year" | "all", signal?: AbortSignal): Promise<string> {
+        const url = new URL(`${SITE_BASE_URL}/settings/${encodeURIComponent(domain)}/stats`);
+        url.searchParams.set("time", time);
+        return (await this.sitePage(url, { ownSite: domain, signal })).text();
+    }
+
+    // Sort is "followdate", "lastupd" or "follows".
+    async getFollowersPage(domain: string, page: number, sort: string, signal?: AbortSignal): Promise<string> {
+        const url = new URL(`${SITE_BASE_URL}/followers/${encodeURIComponent(domain)}`);
+        url.searchParams.set("page", String(page));
+        url.searchParams.set("sort", sort);
+        return (await this.sitePage(url, { ownSite: domain, signal })).text();
+    }
+
+    async getSessionPage(path: string, query: Record<string, string>, signal?: AbortSignal): Promise<string> {
+        const url = new URL(SITE_BASE_URL + path);
+        for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
+        return (await this.sitePage(url, { signal })).text();
+    }
+
+    async getPublicPage(path: string, signal?: AbortSignal): Promise<string> {
+        const response = await this.send(new URL(SITE_BASE_URL + path), {}, REQUEST_TIMEOUT_MS, signal);
+        if (!response.ok) {
+            await response.body?.cancel();
+            throw new NekowebError(`Nekoweb returned HTTP ${response.status} for ${path}. Try again in a moment.`);
+        }
+        return response.text();
+    }
+
+    // Returns whether the site is followed afterwards.
+    async toggleFollow(domain: string, signal?: AbortSignal): Promise<boolean> {
+        const url = new URL(`${SITE_BASE_URL}/api/${encodeURIComponent(domain)}/toggle_follow`);
+        const body = await (await this.sitePage(url, { about: domain, signal })).text();
+        try {
+            const result = JSON.parse(body) as { followed?: unknown };
+            if (typeof result.followed === "boolean") return result.followed;
+        } catch {}
+        throw new NekowebError(`Nekoweb returned an unexpected response when toggling the follow for ${domain}: ${body.slice(0, 300)}`);
+    }
+
+    async submitSettingsForm(domain: string, action: string, fields: Record<string, string>, signal?: AbortSignal): Promise<void> {
+        const init = { method: "POST", body: new URLSearchParams(fields) };
+        const response = await this.sitePage(new URL(SITE_BASE_URL + action), { ownSite: domain, init, signal });
+        await response.body?.cancel();
     }
 
     getSiteInfo(signal?: AbortSignal): Promise<SiteInfo> {
@@ -213,4 +311,4 @@ class NekowebClient {
     }
 }
 
-export const nekoweb = new NekowebClient(API_KEY);
+export const nekoweb = new NekowebClient(API_KEY, SESSION_TOKEN);
