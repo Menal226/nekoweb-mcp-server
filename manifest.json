@@ -4,7 +4,7 @@
     "display_name": "Nekoweb",
     "version": "1.0.0",
     "description": "Manage your Nekoweb website: browse, edit, upload and deploy files, and check site stats.",
-    "long_description": "Lets Claude browse, read, edit, upload, move and delete the files on your Nekoweb site, deploy a zip of a built site, check your views, followers and API rate limits, and keep up with the sites you follow and Nekoweb news.",
+    "long_description": "Lets Claude browse, read, edit, upload, move and delete the files on your Nekoweb site, deploy a zip of a built site, check your views, followers and API rate limits, change your site settings, find other sites, and keep up with the sites you follow and Nekoweb news.",
     "author": {
         "name": "Menal",
         "url": "https://github.com/Menal226"
@@ -64,6 +64,8 @@
         { "name": "nekoweb_import_zip", "description": "Upload and extract a zip" },
         { "name": "nekoweb_move", "description": "Rename or move a file or folder" },
         { "name": "nekoweb_delete", "description": "Permanently delete a file or folder" },
+        { "name": "nekoweb_get_site_settings", "description": "Show a site's settings (needs the session token)" },
+        { "name": "nekoweb_update_site_settings", "description": "Change a site's settings (needs the session token)" },
         { "name": "nekoweb_get_tags", "description": "List a site's tags (needs the session token)" },
         { "name": "nekoweb_add_tag", "description": "Add a tag to a site (needs the session token)" },
         { "name": "nekoweb_remove_tag", "description": "Remove a tag from a site (needs the session token)" },
@@ -72,6 +74,7 @@
             "description": "Show a site's daily views, followers and updates (needs the session token)"
         },
         { "name": "nekoweb_list_followers", "description": "List the sites that follow a site (needs the session token)" },
+        { "name": "nekoweb_search_sites", "description": "Search Nekoweb sites by name or tag" },
         { "name": "nekoweb_get_news", "description": "Read the latest Nekoweb news" },
         { "name": "nekoweb_get_global_feed", "description": "Read the newest posts from all Nekoweb sites" },
         { "name": "nekoweb_get_feed", "description": "Read posts from the sites you follow (needs the session token)" },

@@ -106,7 +106,7 @@ Ask your assistant: *"What's on my Nekoweb site?"* It should list your site's fi
 
 <details><summary><b>Getting your session token</b></summary>
 
-Some features, like site tags, stats history, followers, your feed and following sites, aren't in Nekoweb's official API. The server reads them from nekoweb.org's own pages, using the same login cookie your browser uses.
+Some features, like site settings, tags, stats history, followers, your feed and following sites, aren't in Nekoweb's official API. The server reads them from nekoweb.org's own pages, using the same login cookie your browser uses.
 
 1. Log in at <https://nekoweb.org> in your browser.
 2. Open the developer tools (F12) and go to **Application → Cookies** (Chrome, Edge) or **Storage → Cookies** (Firefox), then pick `https://nekoweb.org`.
@@ -196,6 +196,15 @@ Tools marked read-only never change your site. The others change files, so most 
 
 <summary><b>Settings</b> (needs <code>NEKOWEB_SESSION_TOKEN</code>)</summary>
 
+- **nekoweb_get_site_settings** - Show the folder a site serves and its options: main site, nice links, strict slashes, listed in Explore, posts in the global feed, HTTP access and NSFW (read-only)
+  - `site`: Domain of one of your sites, e.g. `mysite.nekoweb.org`. Omit for the site the API key belongs to (string, optional)
+  - `response_format`: `markdown` (default) or `json` (string, optional)
+
+- **nekoweb_update_site_settings** - Change some of a site's settings; the ones you leave out stay as they are. Turning nice links off or changing the folder can break links to your site
+  - `site`: Domain of one of your sites. Omit for the site the API key belongs to (string, optional)
+  - `main`, `nice_links`, `strict_slash`, `visible`, `show_in_global_feed`, `support_http`, `nsfw`: Turn an option on or off (boolean, optional)
+  - `folder`: Folder the site serves its files from, e.g. `/mysite.nekoweb.org`. It must exist (string, optional)
+
 - **nekoweb_get_tags** - List the tags on one of your sites, and how many of the allowed tags it uses (read-only)
   - `site`: Domain of one of your sites, e.g. `mysite.nekoweb.org`. Omit for the site the API key belongs to (string, optional)
   - `response_format`: `markdown` (default) or `json` (string, optional)
@@ -223,7 +232,14 @@ Tools marked read-only never change your site. The others change files, so most 
 
 <details>
 
-<summary><b>Social</b> (news and the global feed need no key or token, the rest need <code>NEKOWEB_SESSION_TOKEN</code>)</summary>
+<summary><b>Social</b> (news, the global feed and search need no key or token, the rest need <code>NEKOWEB_SESSION_TOKEN</code>)</summary>
+
+- **nekoweb_search_sites** - Search the sites on Nekoweb's Explore page by name or tag. With the session token, results also say which sites you follow (read-only)
+  - `query`: Text to search for. Name searches match part of the domain, tag searches need the exact tag. Omit to browse all sites (string, optional)
+  - `by`: `name` (default) or `tag` (string, optional)
+  - `sort`: `most_viewed` (default), `most_followed`, `least_viewed`, `recently_updated`, `newest` or `oldest` (string, optional)
+  - `page`: Page of results, about 50 sites each, default 1 (number, optional)
+  - `response_format`: `markdown` (default) or `json` (string, optional)
 
 - **nekoweb_get_news** - Get the latest announcements from nekoweb.org's news page, newest first (read-only)
   - `limit`: How many posts to return, 1 to 100, default 5 (number, optional)
@@ -237,7 +253,7 @@ Tools marked read-only never change your site. The others change files, so most 
   - `page`: Page of the feed, newest first, default 1 (number, optional)
   - `response_format`: `markdown` (default) or `json` (string, optional)
 
-- **nekoweb_list_following** - List the sites you follow, grouped by the day each was last updated (read-only, needs the session token)
+- **nekoweb_list_following** - List the sites you follow, grouped by the day each was last updated. Nekoweb leaves out sites their owners hid from Explore (read-only, needs the session token)
   - `page`: Fetch only this page. Omit to fetch every page, up to 20 (number, optional)
   - `response_format`: `markdown` (default) or `json` (string, optional)
 

@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { describeReset, httpErrorMessage, sitePageError } from "../src/api.js";
 import { joinSitePath, normalizeDomain, normalizeEntryPath, normalizeSitePath, splitPath } from "../src/paths.js";
 import { decodeUtf8, imageType } from "../src/tools/files.js";
-import { parseTagForm, parseTags } from "../src/tools/settings.js";
+import { parseSiteSettings, parseTagForm, parseTags } from "../src/tools/settings.js";
 import { parseStats } from "../src/tools/stats.js";
 import { parseFollowers } from "../src/tools/followers.js";
-import { parseFeed, parseFollowing, parseNews, parseRss } from "../src/tools/social.js";
+import { parseExplore, parseFeed, parseFollowState, parseFollowing, parseNews, parseRss } from "../src/tools/social.js";
 import { absoluteUrl, htmlText, isoDate, parseHtml } from "../src/html.js";
 
 // Shaped like the tags section of the real /settings/<domain> page.
@@ -61,6 +61,54 @@ describe("site tags", () => {
         expect(parseTagForm(tagsPage(["gui"]))).toEqual({ csrf: "REDACTED", siteId: "29644" });
         expect(parseTagForm(tagsPage([]))).toEqual({ csrf: "REDACTED", siteId: "29644" });
         expect(parseTagForm("<html><p>Site not found</p></html>")).toBeUndefined();
+    });
+});
+
+// Shaped like the site settings form on the real /settings/<domain> page.
+function settingsPage(checked: string[], folder = "/menal.nekoweb.org", skip = ""): string {
+    const box = (name: string, id: string, label: string) =>
+        name === skip
+            ? ""
+            : `<div><input type="checkbox" name="${name}" id="${id}" ${checked.includes(name) ? "checked" : ""}>\r
+                <label for="${id}">${label}</label></div>`;
+    return `<div id="site-settings"><form method="post" action="/api/settings" enctype="application/x-www-form-urlencoded">\r
+        ${box("main", "main", "Make this site your main site.")}
+        ${box("nice_links", "nice-links", "Enable 'nice links'.")}
+        ${box("strict_slash", "strict-slash", "Enable strict slashes.")}
+        ${box("visible", "visible", "Show this site in Explore and Follows pages.")}
+        ${box("show_in_global_feed", "show_in_global_feed", "Show this site's RSS posts in global feed.")}
+        ${box("support_http", "support_http", "Allow this site to be accessed over HTTP")}
+        ${box("nsfw", "nsfw", "This site contains NSFW content.")}
+        <label for="servefolder">Serve Folder:</label> <input type="text" name="folder" id="servefolder" value="${folder}">\r
+        <input type="hidden" name="csrf" value="REDACTED" required>\r
+        <input type="hidden" name="site_id" value="29644">\r
+        <input type="submit" value="Save">\r
+    </form></div>
+    <div id="tags"><form method="post" action="/api/tags/add"><input type="hidden" name="csrf" value="OTHER"></form></div>`;
+}
+
+describe("site settings", () => {
+    it("reads the checkboxes, folder and form tokens", () => {
+        expect(parseSiteSettings(settingsPage(["main", "nice_links", "visible"]))).toEqual({
+            settings: {
+                main: true,
+                nice_links: true,
+                strict_slash: false,
+                visible: true,
+                show_in_global_feed: false,
+                support_http: false,
+                nsfw: false,
+                folder: "/menal.nekoweb.org"
+            },
+            csrf: "REDACTED",
+            siteId: "29644"
+        });
+        expect(parseSiteSettings(settingsPage([], "/"))?.settings.folder).toBe("/");
+    });
+
+    it("gives up when the form is missing or changed", () => {
+        expect(parseSiteSettings("<html><p>Site not found</p></html>")).toBeUndefined();
+        expect(parseSiteSettings(settingsPage([], "/x", "nsfw"))).toBeUndefined();
     });
 });
 
@@ -269,6 +317,55 @@ describe("feeds", () => {
             },
             { title: "No date here", text: "" }
         ]);
+    });
+
+    it("reads whether you follow a site from its follow page", () => {
+        const page = (classes: string, domain = "dimden.nekoweb.org") =>
+            `<title>Follow - ${domain}</title><div class="kicya-navbar"></div><h1>Unfollow ${domain}</h1>
+            <p>Are you sure you want to unfollow ${domain}?</p>
+            <button class="${classes}" data-domain="${domain}">Unfollow</button>`;
+        expect(parseFollowState(page("follow following"), "dimden.nekoweb.org")).toBe(true);
+        expect(parseFollowState(page("follow"), "dimden.nekoweb.org")).toBe(false);
+        expect(parseFollowState(page("follow following", "other.nekoweb.org"), "dimden.nekoweb.org")).toBeUndefined();
+        expect(parseFollowState("<title>Error! - nekoweb.org</title><p>Site not found</p>", "x.nekoweb.org")).toBeUndefined();
+    });
+
+    it("reads Explore results and its page count", () => {
+        const box = (site: string, title: string, following = false) => `
+            <div class="pre-pre-site"><div class="pre-site"><div id="site-${site.replace(/\./g, "-")}" class="site-box t-classic" style="width:275px!important">
+                <span class="top-dot"></span>
+                <a href="//${site}/" target="_blank" rel="noopener ugc" style="position:relative!important">
+                    <div class="sitefeature"><img src="/screenshots/${site}/index_large.jpg" class="screenshot"></div>
+                    <p style="position:relative!important"> ${site} <span class="follow ${following ? "following " : ""}follow-x" data-domain="${site}" title="Follow" role="button">[${following ? "-" : "+"}]</span> </p>
+                    <span class="site-title">${title}</span> <br>
+                </a><span class="bottom-dot"></span>
+            </div></div></div>`;
+        const query = "&amp;sort=follows&amp;by=name&amp;q=";
+        const page = `<div class="explore"><form><input name="page" value="1"></form>
+            <div class="tags"><a href="/explore?page=1&amp;sort=follows&amp;by=tag&amp;q=art">art</a></div>
+            <div id="sites"><div id="sites-div"><div class="carouselContainer">${box("nexx2654.nekoweb.org", "𝖓𝖊𝖝𝖝")}${box("cleve.nekoweb.org", "Cleve &amp; co", true)}</div></div>
+            <div><a href="/explore?page=1${query}">1</a> • <a href="/explore?page=1${query}">◀</a> • <a href="/explore?page=1${query}">1</a> <b>2</b> <a href="/explore?page=3${query}">3</a> • <a href="/explore?page=3${query}">▶</a> • <a href="/explore?page=397${query}">397</a></div>
+            </div></div><footer><a href="/explore?page=1">Explore</a></footer>`;
+        expect(parseExplore(page)).toEqual({
+            pages: 397,
+            sites: [
+                {
+                    domain: "nexx2654.nekoweb.org",
+                    title: "𝖓𝖊𝖝𝖝",
+                    url: "https://nexx2654.nekoweb.org/",
+                    screenshot_url: "https://nekoweb.org/screenshots/nexx2654.nekoweb.org/index_large.jpg",
+                    you_follow: false
+                },
+                {
+                    domain: "cleve.nekoweb.org",
+                    title: "Cleve & co",
+                    url: "https://cleve.nekoweb.org/",
+                    screenshot_url: "https://nekoweb.org/screenshots/cleve.nekoweb.org/index_large.jpg",
+                    you_follow: true
+                }
+            ]
+        });
+        expect(parseExplore(`<div id="sites"></div><a href="/explore?page=1">Explore</a>`)).toEqual({ sites: [], pages: 1 });
     });
 
     it("reads dates and text", () => {

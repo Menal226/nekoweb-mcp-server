@@ -200,6 +200,12 @@ class NekowebClient {
         return (await this.sitePage(url, { signal })).text();
     }
 
+    // Explore is public, but only shows which sites you follow when logged in.
+    async getExplorePage(query: Record<string, string>, signal?: AbortSignal): Promise<{ html: string; loggedIn: boolean }> {
+        if (this.sessionToken) return { html: await this.getSessionPage("/explore", query, signal), loggedIn: true };
+        return { html: await this.getPublicPage(`/explore?${new URLSearchParams(query)}`, signal), loggedIn: false };
+    }
+
     async getPublicPage(path: string, signal?: AbortSignal): Promise<string> {
         const response = await this.send(new URL(SITE_BASE_URL + path), {}, REQUEST_TIMEOUT_MS, signal);
         if (!response.ok) {
@@ -207,6 +213,12 @@ class NekowebClient {
             throw new NekowebError(`Nekoweb returned HTTP ${response.status} for ${path}. Try again in a moment.`);
         }
         return response.text();
+    }
+
+    // The page behind the "Follow on Nekoweb" button. It only asks for confirmation, so loading it changes nothing.
+    async getFollowPage(domain: string, signal?: AbortSignal): Promise<string> {
+        const url = new URL(`${SITE_BASE_URL}/follow/${encodeURIComponent(domain)}`);
+        return (await this.sitePage(url, { about: domain, signal })).text();
     }
 
     // Returns whether the site is followed afterwards.

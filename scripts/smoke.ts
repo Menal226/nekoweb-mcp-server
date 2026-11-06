@@ -16,6 +16,17 @@ const SITE_TAGS: Record<string, string[]> = {
 const SITE_IDS = Object.fromEntries(Object.keys(SITE_TAGS).map((domain, i) => [String(i + 1), domain]));
 // Rotated after every form submission, so stale tokens are rejected.
 let csrf = "csrf-0";
+const SETTING_FLAGS = ["main", "nice_links", "strict_slash", "visible", "show_in_global_feed", "support_http", "nsfw"];
+const defaultSettings = (main: boolean, folder: string): Record<string, boolean | string> => ({
+    ...Object.fromEntries(SETTING_FLAGS.map(flag => [flag, ["visible", "show_in_global_feed"].includes(flag)])),
+    main,
+    folder
+});
+const SITE_SETTINGS: Record<string, Record<string, boolean | string>> = {
+    "test.nekoweb.org": defaultSettings(true, "/"),
+    "second.nekoweb.org": defaultSettings(false, "/blog"),
+    "full.nekoweb.org": defaultSettings(false, "/")
+};
 
 // Daily snapshots of running totals, like the stats page's chart data. October 3rd is missing.
 const day = (date: string) => Date.parse(`${date}T22:01:00Z`);
@@ -78,12 +89,29 @@ const SITES: Record<string, [string, string]> = {
     "hidden.nekoweb.org": ["Hidden", "September 9, 2026"]
 };
 const FOLLOWING = new Set(["cleve.nekoweb.org", "eyeorb.net", "kiwi2.xyz"]);
-// When set, the pager claims this many pages, as for someone who follows too many sites to load them all.
-let followingPages = 0;
+const EXPLORE_TAGS: Record<string, string[]> = {
+    "cleve.nekoweb.org": ["art"],
+    "eyeorb.net": ["art", "eyes"],
+    "fairfruit.nekoweb.org": ["art"]
+};
 
-// Newest updates first, grouped under a heading per day, 2 sites per page.
+// Most viewed first, 2 sites per page. Name searches match part of the domain, tag searches the whole tag.
+function explorePage(params: URLSearchParams, loggedIn: boolean): string {
+    const { q = "", by = "name", sort = "views" } = Object.fromEntries(params);
+    const page = Number(params.get("page")) || 1;
+    const found = Object.keys(SITES).filter(site => (by === "tag" ? !q || (EXPLORE_TAGS[site] ?? []).includes(q) : site.includes(q)));
+    if (sort === "newest") found.reverse();
+    const cards = found.slice((page - 1) * 2, page * 2).map(site => siteCard(site, SITES[site][0], loggedIn && FOLLOWING.has(site)));
+    const pager = pagerLinks(page, Math.ceil(found.length / 2), `&amp;sort=${sort}&amp;by=${by}&amp;q=${q}`);
+    const tagCloud = `<div class="tags"><a href="/explore?page=1&amp;sort=views&amp;by=tag&amp;q=art">art</a> <a href="/explore?page=1&amp;sort=views&amp;by=tag&amp;q=eyes">eyes</a></div>`;
+    return `<div class="explore"><form><input name="page" value="1"><select name="sort"><option value="views">Most Views</option></select></form>${tagCloud}<div id="sites"><div id="sites-div"><div class="carouselContainer">${cards.join("\r\n")}</div></div><div style="text-align:center">${pager}</div></div></div><footer><a href="/explore?page=1">Explore</a></footer>`;
+}
+
+// Newest updates first, grouped under a heading per day, 2 sites per page. Like nekoweb.org, it leaves out hidden sites.
 function followingPage(page: number): string {
-    const sites = [...FOLLOWING].sort((a, b) => Date.parse(SITES[b][1]) - Date.parse(SITES[a][1]));
+    const sites = [...FOLLOWING]
+        .filter(site => site !== "hidden.nekoweb.org")
+        .sort((a, b) => Date.parse(SITES[b][1]) - Date.parse(SITES[a][1]));
     const shown = sites.slice((page - 1) * 2, page * 2);
     if (shown.length === 0) return `<h1>Sites you follow</h1><div id="sites"><p>No sites found :(</p></div>`;
     const sections: { day: string; cards: string[] }[] = [];
@@ -93,7 +121,7 @@ function followingPage(page: number): string {
         sections.at(-1)!.cards.push(siteCard(site, title, true));
     }
     const html = sections.map(({ day, cards }) => `<h2 class="date">${day}</h2><div class="carouselContainer">${cards.join("")}</div>`);
-    return `<h1>Sites you follow</h1><div id="sites">${html.join("\r\n")}</div><div style="text-align:center">${pagerLinks(page, followingPages || Math.ceil(sites.length / 2))}</div>`;
+    return `<h1>Sites you follow</h1><div id="sites">${html.join("\r\n")}</div><div style="text-align:center">${pagerLinks(page, Math.ceil(sites.length / 2))}</div>`;
 }
 
 const FEED = [
@@ -178,6 +206,24 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
         const page = Number(url.searchParams.get("page")) || 1;
         return send(200, url.pathname === "/follows" ? followingPage(page) : feedPage(page), { "content-type": "text/html" });
     }
+    // Explore is public; only logged-in visitors see which sites they follow.
+    if (url.pathname === "/explore") {
+        calls.push({ method: "GET", path: url.pathname, fields: Object.fromEntries(url.searchParams), files: {} });
+        return send(200, explorePage(url.searchParams, loggedIn), { "content-type": "text/html" });
+    }
+    // The confirmation page behind "Follow on Nekoweb" buttons, which shows whether you follow the site.
+    if (url.pathname.startsWith("/follow/")) {
+        const domain = decodeURIComponent(url.pathname.slice(8)).toLowerCase();
+        calls.push({ method: "GET", path: url.pathname, fields: {}, files: {} });
+        if (!loggedIn) return send(303, "See Other", { location: "/" });
+        if (!SITES[domain]) return errorPage("Site not found");
+        const following = FOLLOWING.has(domain);
+        return send(
+            200,
+            `<title>Follow - ${domain}</title><h1>${following ? "Unfollow" : "Follow"} ${domain}</h1><button class="follow${following ? " following" : ""}" data-domain="${domain}">${following ? "Unfollow" : "Follow"}</button>`,
+            { "content-type": "text/html" }
+        );
+    }
     const toggle = url.pathname.match(/^\/api\/([^/]+)\/toggle_follow$/);
     if (toggle) {
         const domain = decodeURIComponent(toggle[1]);
@@ -235,10 +281,28 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
         });
         const addForm =
             tags.length < 10 ? `<form action="/api/tags/add" method="post"><input type="text" name="tag">\r\n${hidden}</form>` : "";
+        const settings = SITE_SETTINGS[domain];
+        const boxes = SETTING_FLAGS.map(
+            flag =>
+                `<input type="checkbox" name="${flag}" id="${flag}"${settings[flag] ? " checked" : ""}>\r\n<label for="${flag}">${flag}</label><br>`
+        );
+        const settingsForm = `<div id="site-settings"><form action="/api/settings" method="post">${boxes.join("\r\n")}<label for="servefolder">Serve Folder:</label><input type="text" name="folder" id="servefolder" value="${settings.folder}">\r\n${hidden}<input type="submit" value="Save"></form></div>`;
         return send(
             200,
-            `<div id="tags" >\r\n<h2>Tags</h2>\r\n<span>You have ${tags.length} out of 10 tags.</span><br><br>\r\n<table>\r\n<tbody id="tags">\r\n<tr><th>Tag</th><th></th></tr>\r\n${rows.join("\r\n")}\r\n</tbody>\r\n</table>\r\n${addForm}</div>`
+            `${settingsForm}<div id="tags" >\r\n<h2>Tags</h2>\r\n<span>You have ${tags.length} out of 10 tags.</span><br><br>\r\n<table>\r\n<tbody id="tags">\r\n<tr><th>Tag</th><th></th></tr>\r\n${rows.join("\r\n")}\r\n</tbody>\r\n</table>\r\n${addForm}</div>`
         );
+    }
+    // Like nekoweb.org's settings form: unchecked boxes aren't sent, and success redirects back to the settings page.
+    if (url.pathname === "/api/settings") {
+        const form = Object.fromEntries(new URLSearchParams(await new Response(Readable.toWeb(req) as ReadableStream).text()));
+        calls.push({ method: "POST", path: url.pathname, fields: form, files: {} });
+        assert.equal(req.headers.origin, apiBase);
+        if (!loggedIn || form.csrf !== csrf) return send(400, "Security error, please close this tab");
+        csrf = `csrf-${Number(csrf.slice(5)) + 1}`;
+        const domain = SITE_IDS[form.site_id];
+        if (!FOLDERS[form.folder]) return errorPage("Folder doesn't exist.");
+        SITE_SETTINGS[domain] = { ...Object.fromEntries(SETTING_FLAGS.map(flag => [flag, form[flag] === "on"])), folder: form.folder };
+        return send(302, "Found", { location: `/settings/${domain}` });
     }
     // Like nekoweb.org's tag forms: success redirects back to the settings page, a bad session or token is a "Security error".
     if (url.pathname === "/api/tags/add" || url.pathname === "/api/tags/remove") {
@@ -379,6 +443,7 @@ async function mockChecks(client: Client): Promise<void> {
         "nekoweb_get_limits",
         "nekoweb_get_news",
         "nekoweb_get_site_info",
+        "nekoweb_get_site_settings",
         "nekoweb_get_stats_history",
         "nekoweb_get_tags",
         "nekoweb_import_zip",
@@ -389,6 +454,8 @@ async function mockChecks(client: Client): Promise<void> {
         "nekoweb_move",
         "nekoweb_read_file",
         "nekoweb_remove_tag",
+        "nekoweb_search_sites",
+        "nekoweb_update_site_settings",
         "nekoweb_upload_file",
         "nekoweb_write_file"
     ]);
@@ -479,6 +546,44 @@ async function mockChecks(client: Client): Promise<void> {
     assert.match(textOf(await call(client, "nekoweb_add_tag", { tag: "art" })), /No Nekoweb session token configured/);
     assert.match(textOf(await call(client, "nekoweb_get_feed", {})), /No Nekoweb session token configured/);
     assert.match(textOf(await call(client, "nekoweb_follow_site", { site: "eyeorb.net" })), /No Nekoweb session token configured/);
+    assert.match(textOf(await call(client, "nekoweb_get_site_settings", {})), /No Nekoweb session token configured/);
+    assert.match(textOf(await call(client, "nekoweb_update_site_settings", { nsfw: true })), /No Nekoweb session token configured/);
+
+    const tagged = await ok(client, "nekoweb_search_sites", { query: "art", by: "tag", response_format: "json" });
+    assert.deepEqual(calls.at(-1)?.fields, { page: "1", sort: "views", by: "tag", q: "art" });
+    assert.deepEqual(tagged.structuredContent, {
+        query: "art",
+        by: "tag",
+        sort: "most_viewed",
+        page: 1,
+        pages: 2,
+        count: 2,
+        sites: [
+            {
+                domain: "cleve.nekoweb.org",
+                title: "Cleve's place",
+                url: "https://cleve.nekoweb.org/",
+                screenshot_url: `${apiBase}/screenshots/cleve.nekoweb.org/index_large.jpg`
+            },
+            {
+                domain: "eyeorb.net",
+                title: "eyeorb",
+                url: "https://eyeorb.net/",
+                screenshot_url: `${apiBase}/screenshots/eyeorb.net/index_large.jpg`
+            }
+        ]
+    });
+    assert.equal(
+        textOf(await ok(client, "nekoweb_search_sites", { sort: "newest", page: 2 })),
+        "# Sites on Nekoweb\n\nSorted by newest, page 2 of 3.\n\n- [kiwi2.xyz](https://kiwi2.xyz/)\n- [eyeorb.net](https://eyeorb.net/) — eyeorb"
+    );
+    assert.equal(
+        textOf(await ok(client, "nekoweb_search_sites", { query: " kiwi " })),
+        '# Sites matching "kiwi"\n\nSorted by most viewed.\n\n- [kiwi2.xyz](https://kiwi2.xyz/)'
+    );
+    assert.equal(textOf(await ok(client, "nekoweb_search_sites", { query: "ar", by: "tag" })), 'No sites tagged "ar".');
+    assert.equal(textOf(await ok(client, "nekoweb_search_sites", { page: 9 })), "Page 9 has no sites on Nekoweb.");
+    console.error("✓ mock API: sites are searched without a session token");
 
     const news = textOf(await ok(client, "nekoweb_get_news", {}));
     assert.match(
@@ -563,6 +668,72 @@ async function sessionChecks(client: Client): Promise<void> {
     assert.match(textOf(await ok(client, "nekoweb_remove_tag", { tag: "nope" })), /doesn't have the tag "nope", so nothing changed/);
     assert.equal(tagPosts().length, 3);
     console.error("✓ session token: tags are added and removed with a fresh CSRF token");
+
+    const settingsText = (folder: string, on: string[]) =>
+        [
+            "# Settings for test.nekoweb.org",
+            "",
+            `- Serve folder: ${folder}`,
+            ...[
+                ["Main site", "main"],
+                ["Nice links", "nice_links"],
+                ["Strict slashes", "strict_slash"],
+                ["Listed in Explore", "visible"],
+                ["Posts in global feed", "show_in_global_feed"],
+                ["HTTP access", "support_http"],
+                ["NSFW", "nsfw"]
+            ].map(([label, flag]) => `- ${label}: ${on.includes(flag) ? "on" : "off"}`)
+        ].join("\n");
+    const defaults = ["main", "visible", "show_in_global_feed"];
+    assert.equal(textOf(await ok(client, "nekoweb_get_site_settings", {})), settingsText("/", defaults));
+    const secondSettings = await ok(client, "nekoweb_get_site_settings", { site: "second.nekoweb.org", response_format: "json" });
+    assert.deepEqual(secondSettings.structuredContent, {
+        site: "second.nekoweb.org",
+        main: false,
+        nice_links: false,
+        strict_slash: false,
+        visible: true,
+        show_in_global_feed: true,
+        support_http: false,
+        nsfw: false,
+        folder: "/blog"
+    });
+    assert.match(textOf(await call(client, "nekoweb_get_site_settings", { site: "fairfruit.nekoweb.org" })), /Site not found: fairfruit/);
+
+    const settingPosts = () => calls.filter(c => c.path === "/api/settings");
+    assert.equal(
+        textOf(await ok(client, "nekoweb_update_site_settings", { nice_links: true, strict_slash: true, visible: true })),
+        `Updated test.nekoweb.org: Nice links on, Strict slashes on.\n\n${settingsText("/", [...defaults, "nice_links", "strict_slash"])}`
+    );
+    assert.deepEqual(settingPosts().at(-1)?.fields, {
+        main: "on",
+        nice_links: "on",
+        strict_slash: "on",
+        visible: "on",
+        show_in_global_feed: "on",
+        folder: "/",
+        csrf: "csrf-3",
+        site_id: "1"
+    });
+    assert.match(
+        textOf(await ok(client, "nekoweb_update_site_settings", { nice_links: true, folder: "/" })),
+        /^Those settings are already set, so nothing changed\./
+    );
+    assert.equal(
+        textOf(await ok(client, "nekoweb_update_site_settings", { visible: false, folder: "blog\\drafts" })),
+        `Updated test.nekoweb.org: Listed in Explore off, serve folder /blog/drafts.\n\n${settingsText("/blog/drafts", [
+            "main",
+            "show_in_global_feed",
+            "nice_links",
+            "strict_slash"
+        ])}`
+    );
+    assert.equal(settingPosts().at(-1)?.fields.visible, undefined, "unchecked boxes are left out of the form");
+    assert.match(textOf(await call(client, "nekoweb_update_site_settings", { folder: "/nope" })), /HTTP 404/);
+    assert.match(textOf(await call(client, "nekoweb_update_site_settings", { folder: "/../etc" })), /not allowed/);
+    assert.match(textOf(await call(client, "nekoweb_update_site_settings", {})), /Pass at least one setting/);
+    assert.equal(settingPosts().length, 2);
+    console.error("✓ session token: site settings are read and only the given ones change");
 
     assert.equal(
         textOf(await ok(client, "nekoweb_get_stats_history", {})),
@@ -706,6 +877,14 @@ async function sessionChecks(client: Client): Promise<void> {
     assert.equal(textOf(await ok(client, "nekoweb_get_feed", { page: 3 })), "Page 3 of your feed is empty.");
     console.error("✓ session token: followed sites and the feed are read");
 
+    assert.equal(
+        textOf(await ok(client, "nekoweb_search_sites", { query: "e" })),
+        '# Sites matching "e"\n\nSorted by most viewed, page 1 of 2.\n\n- [cleve.nekoweb.org](https://cleve.nekoweb.org/) — Cleve\'s place (you follow)\n- [eyeorb.net](https://eyeorb.net/) — eyeorb (you follow)'
+    );
+    const searched = await ok(client, "nekoweb_search_sites", { query: "hidden", response_format: "json" });
+    assert.equal((searched.structuredContent as { sites: { you_follow: boolean }[] }).sites[0].you_follow, false);
+    console.error("✓ session token: search results say which sites you follow");
+
     const toggles = () => calls.filter(c => c.path.endsWith("/toggle_follow")).length;
     assert.equal(
         textOf(await ok(client, "nekoweb_follow_site", { site: "fairfruit.nekoweb.org" })),
@@ -722,17 +901,19 @@ async function sessionChecks(client: Client): Promise<void> {
         "You don't follow eyeorb.net, so nothing changed."
     );
     assert.equal(toggles(), 2);
-    // With more followed sites than are loaded, a toggle that goes the wrong way is undone.
-    followingPages = 25;
+    // Hidden sites aren't on the followed sites list, but the follow page still shows whether you follow them.
+    assert.equal(textOf(await ok(client, "nekoweb_follow_site", { site: "hidden.nekoweb.org" })), "You now follow hidden.nekoweb.org.");
+    assert.doesNotMatch(textOf(await ok(client, "nekoweb_list_following", {})), /hidden\.nekoweb\.org/);
+    assert.equal(
+        textOf(await ok(client, "nekoweb_follow_site", { site: "hidden.nekoweb.org" })),
+        "You already follow hidden.nekoweb.org, so nothing changed."
+    );
     assert.equal(
         textOf(await ok(client, "nekoweb_follow_site", { site: "hidden.nekoweb.org", follow: false })),
-        "You don't follow hidden.nekoweb.org, so nothing changed."
+        "You unfollowed hidden.nekoweb.org."
     );
     assert.equal(toggles(), 4);
-    assert.equal(textOf(await ok(client, "nekoweb_follow_site", { site: "hidden.nekoweb.org" })), "You now follow hidden.nekoweb.org.");
-    assert.equal(toggles(), 5);
-    followingPages = 0;
-    assert.deepEqual([...FOLLOWING].sort(), ["cleve.nekoweb.org", "fairfruit.nekoweb.org", "hidden.nekoweb.org", "kiwi2.xyz"]);
+    assert.deepEqual([...FOLLOWING].sort(), ["cleve.nekoweb.org", "fairfruit.nekoweb.org", "kiwi2.xyz"]);
     assert.match(textOf(await call(client, "nekoweb_follow_site", { site: "https://" })), /Invalid site "https:\/\/"/);
     const missing = await call(client, "nekoweb_follow_site", { site: "nope.nekoweb.org" });
     assert.equal(missing.isError, true);
@@ -755,6 +936,14 @@ async function badSessionChecks(client: Client): Promise<void> {
     assert.match(textOf(await call(client, "nekoweb_list_followers", { site: "test.nekoweb.org" })), /session token is invalid or expired/);
     assert.match(textOf(await call(client, "nekoweb_list_following", {})), /session token is invalid or expired/);
     assert.match(textOf(await call(client, "nekoweb_get_feed", {})), /session token is invalid or expired/);
+    assert.match(
+        textOf(await call(client, "nekoweb_get_site_settings", { site: "test.nekoweb.org" })),
+        /session token is invalid or expired/
+    );
+    assert.match(
+        textOf(await call(client, "nekoweb_update_site_settings", { site: "test.nekoweb.org", nsfw: true })),
+        /session token is invalid or expired/
+    );
     assert.match(
         textOf(await call(client, "nekoweb_follow_site", { site: "fairfruit.nekoweb.org" })),
         /session token is invalid or expired/
@@ -787,6 +976,13 @@ async function liveChecks(client: Client): Promise<void> {
     const posts = (global.structuredContent as { posts: { url: string; site: string; date: string }[] }).posts;
     assert.equal(posts.length, 20);
     assert.ok(posts.every(post => post.url.startsWith("http") && post.site && !Number.isNaN(Date.parse(post.date))));
+    const found = await ok(client, "nekoweb_search_sites", { query: "fairfruit", response_format: "json" });
+    const results = (found.structuredContent as { sites: { domain: string; you_follow?: boolean }[] }).sites;
+    assert.ok(results.some(site => site.domain === "fairfruit.nekoweb.org" && site.you_follow === undefined));
+    const art = await ok(client, "nekoweb_search_sites", { query: "art", by: "tag", sort: "most_followed", response_format: "json" });
+    assert.ok(
+        (art.structuredContent as { pages: number; count: number }).pages > 1 && (art.structuredContent as { count: number }).count > 40
+    );
     console.error("✓ live: public site info and key errors work against nekoweb.org");
 }
 

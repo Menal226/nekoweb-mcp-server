@@ -101,11 +101,28 @@ function formatPosts(heading: string, posts: FeedPost[]): string {
     return [`# ${heading}`, "", ...lines].join("\n");
 }
 
-function loadFollowing(page: number | undefined, signal: AbortSignal) {
-    return loadPages(async n => {
-        const result = parseFollowing(await nekoweb.getSessionPage("/follows", { page: String(n) }, signal));
-        return { items: result.sites, pages: result.pages };
-    }, page);
+const EXPLORE_SORTS = {
+    most_viewed: "views",
+    most_followed: "follows",
+    least_viewed: "least_views",
+    recently_updated: "lastupd",
+    newest: "newest",
+    oldest: "oldest"
+} as const;
+
+export function parseExplore(html: string): { sites: SiteCard[]; pages: number } {
+    const $ = parseHtml(html);
+    const sites = siteCards($, $("#sites"));
+    return { sites, pages: pageCount($, "/explore", sites.length > 0) };
+}
+
+// The /follow/<domain> page has the site's follow button, marked "following" when you follow it.
+export function parseFollowState(html: string, domain: string): boolean | undefined {
+    const $ = parseHtml(html);
+    const button = $(".follow[data-domain]")
+        .filter((_, el) => $(el).attr("data-domain")?.toLowerCase() === domain)
+        .first();
+    return button.length ? button.hasClass("following") : undefined;
 }
 
 export function registerSocialTools(server: McpServer): void {
@@ -119,6 +136,8 @@ ${SESSION_NOTE}
 
 Without 'page', every page is fetched (up to ${MAX_PAGES} pages). For the posts those sites published, use nekoweb_get_feed.
 
+Nekoweb leaves out followed sites whose owners hid them from Explore, so a site missing here may still be followed. nekoweb_follow_site checks a single site reliably.
+
 Examples:
   - "Which sites I follow updated recently?" -> {}
   - "Show the second page of sites I follow" -> { page: 2 }`,
@@ -129,7 +148,14 @@ Examples:
             annotations: READ_ONLY
         },
         async ({ page, response_format }, ctx) => {
-            const { items: sites, pages, note } = await loadFollowing(page, ctx.mcpReq.signal);
+            const {
+                items: sites,
+                pages,
+                note
+            } = await loadPages(async n => {
+                const result = parseFollowing(await nekoweb.getSessionPage("/follows", { page: String(n) }, ctx.mcpReq.signal));
+                return { items: result.sites, pages: result.pages };
+            }, page);
             if (response_format === "json") return json({ ...(page && { page }), pages, count: sites.length, sites });
             if (sites.length === 0) return text(page ? `No followed sites on this page. ${note}` : "You don't follow any sites yet.");
             const lines: string[] = [];
@@ -231,6 +257,52 @@ Example: "Any Nekoweb news?" -> {}`,
     );
 
     server.registerTool(
+        "nekoweb_search_sites",
+        {
+            title: "Search Nekoweb sites",
+            description: `Search and browse the sites listed on Nekoweb's Explore page, by name or by tag, in one of several orders. Each result has the domain, title, link and screenshot.
+
+No session token needed. With one, results also say whether you follow each site.
+
+Name searches match part of the domain; tag searches need the exact tag. Each page has about 50 sites.
+
+Examples:
+  - "Find Nekoweb sites about pixel art" -> { query: "pixel-art", by: "tag" }
+  - "Newest sites on Nekoweb" -> { sort: "newest" }
+  - "Is there a site called kiwi?" -> { query: "kiwi" }`,
+            inputSchema: z.strictObject({
+                query: z.string().trim().max(100).default("").describe("Text to search for. Omit to browse all sites."),
+                by: z
+                    .enum(["name", "tag"])
+                    .default("name")
+                    .describe("'name' (default) searches domains, 'tag' finds sites with that exact tag"),
+                sort: z
+                    .enum(["most_viewed", "most_followed", "least_viewed", "recently_updated", "newest", "oldest"])
+                    .default("most_viewed")
+                    .describe("Order of the results (default 'most_viewed')"),
+                page: pageField.default(1).describe("Page of results (default 1)"),
+                response_format: responseFormatField
+            }),
+            annotations: READ_ONLY
+        },
+        async ({ query, by, sort, page, response_format }, ctx) => {
+            const params = { page: String(page), sort: EXPLORE_SORTS[sort], by, q: query };
+            const { html, loggedIn } = await nekoweb.getExplorePage(params, ctx.mcpReq.signal);
+            const { sites, pages } = parseExplore(html);
+            const results = loggedIn ? sites : sites.map(({ you_follow: _, ...site }) => site);
+            if (response_format === "json") return json({ query, by, sort, page, pages, count: results.length, sites: results });
+            const what = query ? `${by === "tag" ? "tagged" : "matching"} "${query}"` : "on Nekoweb";
+            if (sites.length === 0) return text(page > 1 ? `Page ${page} has no sites ${what}.` : `No sites ${what}.`);
+            const lines = sites.map(site => {
+                const title = site.title && site.title !== site.domain ? ` — ${site.title}` : "";
+                return `- [${site.domain}](${site.url})${title}${loggedIn && site.you_follow ? " (you follow)" : ""}`;
+            });
+            const where = pages > 1 ? `, page ${page} of ${pages}` : "";
+            return text([`# Sites ${what}`, "", `Sorted by ${sort.replace(/_/g, " ")}${where}.`, "", ...lines].join("\n"));
+        }
+    );
+
+    server.registerTool(
         "nekoweb_follow_site",
         {
             title: "Follow or unfollow a site",
@@ -250,19 +322,13 @@ Examples:
         async ({ site, follow }, ctx) => {
             const signal = ctx.mcpReq.signal;
             const domain = normalizeDomain(site);
-            const already = () => text(`You ${follow ? "already follow" : "don't follow"} ${domain}, so nothing changed.`);
-            // Nekoweb only has a toggle, so check the followed sites first. If that list was cut off at MAX_PAGES, a site
-            // missing from it may still be followed: then a toggle that goes the wrong way is undone.
-            const following = await loadFollowing(undefined, signal);
-            const listed = following.items.some(item => item.domain.toLowerCase() === domain);
-            const complete = following.pages <= MAX_PAGES;
-            if (listed === follow && (listed || complete)) return already();
+            // Nekoweb only has a toggle, so check first. The followed sites list can't tell: it leaves out hidden sites.
+            const before = parseFollowState(await nekoweb.getFollowPage(domain, signal), domain);
+            if (before === undefined)
+                throw new NekowebError(`Couldn't find the follow button for ${domain}; Nekoweb may have changed the page.`);
+            if (before === follow) return text(`You ${follow ? "already follow" : "don't follow"} ${domain}, so nothing changed.`);
 
-            let followed = await nekoweb.toggleFollow(domain, signal);
-            if (followed !== follow && !complete) {
-                followed = await nekoweb.toggleFollow(domain, signal);
-                if (followed === follow) return already();
-            }
+            const followed = await nekoweb.toggleFollow(domain, signal);
             if (followed !== follow)
                 throw new NekowebError(`Nekoweb says you ${followed ? "still follow" : "don't follow"} ${domain}. Try again in a moment.`);
             return text(follow ? `You now follow ${domain}.` : `You unfollowed ${domain}.`);

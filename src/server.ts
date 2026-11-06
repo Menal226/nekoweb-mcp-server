@@ -12,7 +12,7 @@ const INSTRUCTIONS = `Tools for managing a static website hosted on Nekoweb (nek
 Paths are absolute from the account's file root. Each site's files are usually in a folder named after it, e.g. "/mysite.nekoweb.org/index.html"; nekoweb_list_sites shows each site's folder and nekoweb_list_folder at "/" shows the layout.
 Typical workflow: nekoweb_list_sites to find the folder, nekoweb_list_folder to explore, nekoweb_read_file to read, nekoweb_write_file to change text files, nekoweb_upload_file for binaries.
 File operations share a rate limit; check nekoweb_get_limits before bulk work.
-Tools for things the official API lacks (tags, stats history, followers, followed sites, your feed, following and unfollowing) need the optional login session token (NEKOWEB_SESSION_TOKEN). Never ask the user to paste it into the chat; it goes in the MCP config. nekoweb_get_news and nekoweb_get_global_feed need neither the key nor the token.`;
+Tools for things the official API lacks (site settings, tags, stats history, followers, followed sites, your feed, following and unfollowing) need the optional login session token (NEKOWEB_SESSION_TOKEN). Never ask the user to paste it into the chat; it goes in the MCP config. nekoweb_get_news, nekoweb_get_global_feed and nekoweb_search_sites need neither the key nor the token.`;
 
 export function createServer(): McpServer {
     const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION }, { instructions: INSTRUCTIONS });
