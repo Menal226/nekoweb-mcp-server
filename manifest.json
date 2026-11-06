@@ -2,7 +2,7 @@
     "manifest_version": "0.2",
     "name": "nekoweb-mcp-server",
     "display_name": "Nekoweb",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Manage your Nekoweb website: browse, edit, upload and deploy files, and check site stats.",
     "long_description": "Lets Claude browse, read, edit, upload, move and delete the files on your Nekoweb site, deploy a zip of a built site, check your views, followers and API rate limits, change your site settings, find other sites, and keep up with the sites you follow and Nekoweb news.",
     "author": {

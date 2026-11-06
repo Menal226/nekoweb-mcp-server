@@ -1,6 +1,6 @@
 {
     "name": "nekoweb-mcp-server",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "MCP server that lets AI assistants manage your Nekoweb website: browse, edit, upload and deploy files, and check stats",
     "mcpName": "io.github.Menal226/nekoweb-mcp-server",
     "keywords": [
