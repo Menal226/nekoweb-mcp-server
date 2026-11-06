@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeReset, httpErrorMessage, sitePageError } from "../src/api.js";
+import { describeReset, httpErrorMessage, sitePageError, stripInjectedLinks } from "../src/api.js";
 import { joinSitePath, normalizeDomain, normalizeEntryPath, normalizeSitePath, splitPath } from "../src/paths.js";
 import { decodeUtf8, imageType } from "../src/tools/files.js";
 import { parseSiteSettings, parseTagForm, parseTags } from "../src/tools/settings.js";
@@ -417,6 +417,28 @@ describe("paths", () => {
         expect(splitPath("/a/b.html")).toEqual({ folder: "/a", name: "b.html" });
         expect(splitPath("/b.html")).toEqual({ folder: "/", name: "b.html" });
         expect(joinSitePath("/", "x")).toBe("/x");
+    });
+});
+
+describe("Cloudflare's hidden links", () => {
+    const trap = (id: string) =>
+        `<a href="https://nekoweb.org/cdn-cgi/content?id=${id}" aria-hidden="true" rel="nofollow noopener" style="display: none !important; visibility: hidden !important"></a>`;
+    const strip = (text: string | Buffer) => Buffer.from(stripInjectedLinks(Buffer.from(text))).toString("latin1");
+
+    it("removes them and leaves every other byte alone", () => {
+        const file = Buffer.concat([
+            Buffer.from("<body>\n\t\t<!--# follow -->\n"),
+            Buffer.from([0xe9, 0xff, 0x00]),
+            Buffer.from("ü</body>")
+        ]);
+        const served = Buffer.concat([Buffer.from(`<body>${trap("kePu-179.77-1.2.1.1-GD5_dPk")}`), file.subarray(6)]);
+        expect(Buffer.from(stripInjectedLinks(served)).equals(file)).toBe(true);
+        expect(strip(`${trap("a")}<p>x</p>${trap("b.c")}`)).toBe("<p>x</p>");
+    });
+
+    it("keeps links that only look similar", () => {
+        const own = `<a href="https://nekoweb.org/cdn-cgi/content?id=1">visible</a><a href="/cdn-cgi/content?id=2" aria-hidden="true"></a>`;
+        expect(strip(own)).toBe(own);
     });
 });
 

@@ -75,6 +75,15 @@ export function describeReset(reset: string | number): string {
     return `${Math.ceil(n)} seconds from now`;
 }
 
+const INJECTED_LINK =
+    /<a href="https?:\/\/[^"/]+\/cdn-cgi\/content\?id=[^"]*" aria-hidden="true" rel="nofollow noopener" style="display: none !important; visibility: hidden !important"><\/a>/g;
+
+export function stripInjectedLinks(bytes: Uint8Array): Uint8Array {
+    const text = Buffer.from(bytes).toString("latin1");
+    const cleaned = text.replace(INJECTED_LINK, "");
+    return cleaned.length === text.length ? bytes : new Uint8Array(Buffer.from(cleaned, "latin1"));
+}
+
 const SiteInfoSchema = z.object({
     id: z.number().optional(),
     // The API sends 1/0 here, not true/false.
@@ -266,9 +275,11 @@ class NekowebClient {
             await response.body?.cancel();
             throw tooBig(length);
         }
-        const bytes = new Uint8Array(await response.arrayBuffer());
+        const contentType = response.headers.get("content-type") ?? "";
+        let bytes: Uint8Array = new Uint8Array(await response.arrayBuffer());
+        if (/html/i.test(contentType)) bytes = stripInjectedLinks(bytes);
         if (bytes.byteLength > MAX_READ_BYTES) throw tooBig(bytes.byteLength);
-        return { contentType: response.headers.get("content-type") ?? "", bytes };
+        return { contentType, bytes };
     }
 
     create(pathname: string, isFolder: boolean, signal?: AbortSignal) {

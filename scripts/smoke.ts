@@ -362,7 +362,9 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
             const file = RAW_FILES[url.searchParams.get("pathname") ?? ""];
             if (!file) return send(404, { error: "File not found" });
             res.writeHead(200, { "content-type": file.type });
-            res.end(file.body);
+            // Like Cloudflare's bot protection on nekoweb.org, which adds a hidden link to HTML.
+            const trap = `<a href="${apiBase}/cdn-cgi/content?id=abc.123-1.2.1.1-x_Y" aria-hidden="true" rel="nofollow noopener" style="display: none !important; visibility: hidden !important"></a>`;
+            res.end(file.type.includes("html") ? Buffer.concat([Buffer.from(trap), file.body]) : file.body);
             return;
         }
         case "/files/readfolder": {
